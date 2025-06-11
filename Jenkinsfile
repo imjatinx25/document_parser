@@ -114,23 +114,27 @@ pipeline{
         stage('Run New Docker Container on Port 8001') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
+                    withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2'),
+                                    usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh """
-                            # Login to AWS ECR
+                            # Login to AWS ECR with the credentials passed from Jenkins
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
 
                             # Clean up any existing container on port 8001 if it exists
                             docker ps -q --filter publish=8001 | xargs -r docker stop | xargs -r docker rm
 
-                            # Run Docker container on port 8001, pass all environment variables from the .env file to the container
+                            # Run Docker container on port 8001, pass AWS credentials and .env file to the container
                             docker run -d -p 8001:8001 \
                                 --env-file $ENV_FILE2 \
+                                -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
                                 ${DOCKER_REGISTRY}/${DOCKER_TAG}
                         """
                     }
                 }
             }
         }
+
 
     }
 }
