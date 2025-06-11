@@ -29,10 +29,13 @@ pipeline{
             // }
             steps {
                 withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
+                    sh 'echo $ENV_FILE2'
                     // Clean up any existing .env file
                     sh 'rm -f .env'
                     // Copy the injected .env file
                     sh 'cp $ENV_FILE2 .env'
+
+                    sh 'cat .env'
                 }
             }
         }
