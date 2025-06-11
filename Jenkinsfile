@@ -91,5 +91,41 @@ pipeline{
                 }
             }
         }
+        stage('Stop and Remove Old Docker Container Running on Port 8001') {
+            steps {
+                script {
+                    // Stop and remove the container running on port 8001
+                    sh """
+                        container_id=\$(docker ps -q --filter "publish=8001")
+                        if [ -n "\$container_id" ]; then
+                            docker stop \$container_id
+                            docker rm \$container_id
+                            echo 'Old container stopped and removed'
+                        else
+                            echo 'No container running on port 8001'
+                        fi
+                    """
+                }
+            }
+        }
+        stage('Run New Docker Container on Port 8001') {
+            steps {
+                script {
+                    // Run the new Docker image on port 8000 with necessary environment variables
+                    withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh """
+                            # Login to AWS ECR
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
+
+                            # Run Docker container on port 8001 and pass AWS credentials to the container
+                            docker run -d -p 8001:8001 \
+                                -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+                                -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                ${DOCKER_REGISTRY}/${DOCKER_TAG}
+                        """
+                    }
+                }
+            }
+        }
     }
 }
