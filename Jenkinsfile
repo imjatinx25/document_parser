@@ -28,11 +28,11 @@ pipeline{
             //     branch 'main'
             // }
             steps {
-                withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE1')]) {
+                withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
                     // Clean up any existing .env file
                     sh 'rm -f .env'
                     // Copy the injected .env file
-                    sh 'cp $ENV_FILE1 .env'
+                    sh 'cp $ENV_FILE2 .env'
                 }
             }
         }
