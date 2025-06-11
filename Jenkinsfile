@@ -114,21 +114,23 @@ pipeline{
         stage('Run New Docker Container on Port 8001') {
             steps {
                 script {
-                    // Run the new Docker image on port 8000 with necessary environment variables
-                    withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
                         sh """
                             # Login to AWS ECR
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY}
 
-                            # Run Docker container on port 8001 and pass AWS credentials to the container
+                            # Clean up any existing container on port 8001 if it exists
+                            docker ps -q --filter publish=8001 | xargs -r docker stop | xargs -r docker rm
+
+                            # Run Docker container on port 8001, pass all environment variables from the .env file to the container
                             docker run -d -p 8001:8001 \
-                                -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-                                -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+                                --env-file $ENV_FILE2 \
                                 ${DOCKER_REGISTRY}/${DOCKER_TAG}
                         """
                     }
                 }
             }
         }
+
     }
 }
