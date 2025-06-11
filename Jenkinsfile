@@ -61,5 +61,35 @@ pipeline{
                 }
             }
         }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build Docker image
+                    sh """
+                        docker build -t ${DOCKER_TAG} .
+                    """
+                }
+            }
+        }
+        stage('Tag Docker Image') {
+            steps {
+                script {
+                    // Tag the Docker image with the correct repository path
+                    sh """
+                        docker tag ${DOCKER_TAG} ${DOCKER_REGISTRY}/${DOCKER_TAG}
+                    """
+                }
+            }
+        }
+        stage('Push Docker Image to ECR') {
+            steps {
+                script {
+                    // Push the Docker image to AWS ECR
+                    sh """
+                        docker push ${DOCKER_REGISTRY}/${DOCKER_TAG}
+                    """
+                }
+            }
+        }
     }
 }
