@@ -12,12 +12,9 @@ from collections import defaultdict
 
 # Configure logging
 logging.basicConfig(
+    filename='/tmp/app.log',
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('app.log')
-    ]
+    format='%(asctime)s %(levelname)s %(message)s',
 )
 logger = logging.getLogger(__name__)
 
