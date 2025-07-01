@@ -44,7 +44,7 @@ pipeline {
         stage('Build Docker Images via Docker Compose') {
             steps {
                 sh '''
-                    docker-compose build
+                    docker compose build
                 '''
             }
         }
@@ -64,13 +64,13 @@ pipeline {
 
         stage('Stop Existing Containers') {
             steps {
-                sh 'docker-compose down || true'
+                sh 'docker compose down || true'
             }
         }
 
         stage('Deploy via Docker Compose') {
             steps {
-                sh 'docker-compose up -d'
+                sh 'docker compose up -d'
             }
         }
     }
