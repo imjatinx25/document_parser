@@ -1,6 +1,6 @@
 # Git
 .git
-.gitattributes
+.gitignore
 
 # Python
 __pycache__/
@@ -8,7 +8,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
 env/
 build/
 develop-eggs/
@@ -26,6 +25,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Virtual Environment
+venv/
+ENV/
+
 # IDE
 .idea/
 .vscode/
@@ -36,12 +39,14 @@ wheels/
 logs/
 *.log
 
-# Environment
+# Local development
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Docker
 Dockerfile
+docker-compose.yml
 .dockerignore
 
 # Other

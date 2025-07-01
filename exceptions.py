@@ -9,6 +9,14 @@ class TextractError(Exception):
     """Custom exception for Textract processing errors"""
     pass
 
+class PDFPasswordError(Exception):
+    """Custom exception for PDF password errors"""
+    pass
+
+class PDFProcessingError(Exception):
+    """Custom exception for PDF processing errors"""
+    pass
+
 async def http_exception_handler(request, exc) -> JSONResponse:
     """
     Global exception handler for HTTP exceptions
