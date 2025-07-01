@@ -22,7 +22,6 @@ pipeline {
                     sh '''
                         rm -f .env
                         cp $ENV_FILE2 .env
-                        cat .env
                     '''
                 }
             }
