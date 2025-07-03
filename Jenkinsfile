@@ -2,15 +2,16 @@ pipeline {
     agent any
 
     triggers {
-        githubPush()
+        githubPush()  // Trigger build on GitHub push
     }
+
 
     environment {
         AWS_REGION = 'ap-south-1'
         DOCKER_REGISTRY = '676206929524.dkr.ecr.ap-south-1.amazonaws.com'
         DOCKER_IMAGE = 'dev-orbit-pem'
-        DOCKER_NAME = "JATIN"
-        DOCKER_TAG = "${DOCKER_IMAGE}:${DOCKER_NAME}${BUILD_NUMBER}"
+        DOCKER_NAME = 'JATIN'
+        DOCKER_TAG = "${DOCKER_NAME}${BUILD_NUMBER}"
     }
 
     stages {
@@ -20,14 +21,12 @@ pipeline {
             }
         }
 
-        stage('Load Environment from Jenkins Secret') {
+        stage('Inject .env from Jenkins Secret') {
             steps {
                 withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
                     sh '''
-                        echo "Loading environment variables"
                         rm -f .env
                         cp $ENV_FILE2 .env
-                        chmod 644 .env
                     '''
                 }
             }
@@ -46,66 +45,36 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh """
-                    docker build -t ${DOCKER_TAG} .
-                """
-            }
-        }
-
-        stage('Tag Docker Image for ECR') {
-            steps {
-                sh """
-                    docker tag ${DOCKER_TAG} ${DOCKER_REGISTRY}/${DOCKER_TAG}
-                """
-            }
-        }
-
-        stage('Push Image to ECR') {
-            steps {
-                sh """
-                    docker push ${DOCKER_REGISTRY}/${DOCKER_TAG}
-                """
-            }
-        }
-
-        stage('Stop & Remove Old Container on Port 8001') {
+        stage('Build Docker Images via Docker Compose') {
             steps {
                 sh '''
-                    container_id=$(docker ps -q --filter "publish=8001")
-                    if [ -n "$container_id" ]; then
-                        docker stop $container_id
-                        docker rm $container_id
-                        echo "Old container stopped and removed."
-                    else
-                        echo "No container running on port 8001."
-                    fi
+                    docker compose build
                 '''
             }
         }
 
-        stage('Run New Container on Port 8001') {
+        stage('Tag & Push Images to AWS ECR') {
             steps {
-                withCredentials([
-                    file(credentialsId: 'jatin_env', variable: 'ENV_FILE2'),
-                    usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    script {
-                        def envVars = readFile(env.ENV_FILE2).split("\n")
-                            .findAll { it.contains("=") }
-                            .collect { "-e ${it.trim()}" }
-                            .join(" ")
+                script {
+                    def fullImageTag = "${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}"
 
-                        sh """
-                            docker run -d -p 8001:8001 \
-                                ${envVars} \
-                                -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-                                -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-                                ${DOCKER_REGISTRY}/${DOCKER_TAG}
-                        """
-                    }
+                    sh """
+                        docker tag ${DOCKER_IMAGE}_web ${fullImageTag}
+                        docker push ${fullImageTag}
+                    """
                 }
+            }
+        }
+
+        stage('Stop Existing Containers') {
+            steps {
+                sh 'docker compose down || true'
+            }
+        }
+
+        stage('Deploy via Docker Compose') {
+            steps {
+                sh 'docker compose up -d'
             }
         }
     }
