@@ -16,9 +16,9 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - .:/app
-    command: uvicorn app:app --host 0.0.0.0 --port 8001
+    # volumes:
+    #   - .:/app
+    # command: uvicorn app:app --host 0.0.0.0 --port 8001
 
   worker:
     build: .
