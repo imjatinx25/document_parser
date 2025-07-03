@@ -2,21 +2,7 @@ from typing import List, Dict, Union, Any
 from datetime import datetime
 from collections import defaultdict
 import statistics
-import logging
-from pathlib import Path
 import pandas as pd
-
-# Set up logging
-log_dir = Path("logs")
-log_dir.mkdir(exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_dir / 'analysis.log'),
-        logging.StreamHandler()
-    ]
-)
 
 def validate_transaction(transaction: Dict[str, Any]) -> bool:
     """Validate if a transaction has all required fields and correct data types."""
@@ -33,7 +19,7 @@ def validate_transaction(transaction: Dict[str, Any]) -> bool:
         # Check all required fields exist
         if not all(field in transaction for field in required_fields):
             missing_fields = [f for f in required_fields if f not in transaction]
-            logging.error(f"Missing required fields in transaction: {missing_fields}")
+            print(f"Missing required fields in transaction: {missing_fields}")
             return False
         
         # Check data types
@@ -44,20 +30,20 @@ def validate_transaction(transaction: Dict[str, Any]) -> bool:
                 try:
                     float(value.replace(',', ''))
                 except ValueError:
-                    logging.error(f"Invalid balance value in transaction: {value}")
+                    print(f"Invalid balance value in transaction: {value}")
                     return False
             elif not isinstance(value, expected_type):
-                logging.error(f"Invalid type for {field}. Expected {expected_type}, got {type(value)}")
+                print(f"Invalid type for {field}. Expected {expected_type}, got {type(value)}")
                 return False
         
         # Validate category format
         if '.' not in transaction['category']:
-            logging.error(f"Invalid category format: {transaction['category']}")
+            print(f"Invalid category format: {transaction['category']}")
             return False
         
         return True
     except Exception as e:
-        logging.error(f"Error validating transaction: {str(e)}")
+        print(f"Error validating transaction: {str(e)}")
         return False
 
 def parse_date(date_str: str) -> Union[datetime, None]:
@@ -80,7 +66,7 @@ def parse_date(date_str: str) -> Union[datetime, None]:
                 # Assume 20xx for year
                 return dt.replace(year=dt.year + 2000)
             except ValueError as e:
-                logging.error(f"Failed to parse date {date_str}: {str(e)}")
+                print(f"Failed to parse date {date_str}: {str(e)}")
                 return None
 
 def get_month_key(date_str: str) -> str:
@@ -94,7 +80,7 @@ def safe_float_conversion(value: Union[int, float, str]) -> float:
             return float(value.replace(',', ''))
         return float(value)
     except (ValueError, TypeError) as e:
-        logging.error(f"Failed to convert value to float: {value}, Error: {str(e)}")
+        print(f"Failed to convert value to float: {value}, Error: {str(e)}")
         return 0.0
 
 def calculate_monthly_summary(transactions: List[Dict]) -> Dict:
