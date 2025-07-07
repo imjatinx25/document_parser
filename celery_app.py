@@ -5,11 +5,14 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# broker_url = f"redis://localhost:6379/0"
+broker_url = f"redis://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}/0?ssl_cert_reqs=none"
+
 # Configure Celery with Valkey Glide
 celery_app = Celery(
     'bank_statement_analyzer',
-    broker=f"redis://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}/0?ssl_cert_reqs=none",
-    backend=f"redis://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}/0?ssl_cert_reqs=none",
+    broker=broker_url,
+    backend=broker_url,
     include=['celery_tasks']
 )
 
