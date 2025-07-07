@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # broker_url = f"redis://localhost:6379/0"
-broker_url = f"rediss://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}/0?ssl_cert_reqs=CERT_OPTIONAL"
+broker_url = f"redis://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}/0"
 
 # Configure Celery with Valkey Glide
 celery_app = Celery(
