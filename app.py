@@ -94,6 +94,6 @@ async def home() -> Dict:
     }
 
 # Run the app
-if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv('APP_PORT', 8001)))
+# if __name__ == '__main__':
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv('APP_PORT', 8001)), timeout_keep_alive=300)
