@@ -11,7 +11,7 @@ pipeline {
         DOCKER_REGISTRY = '676206929524.dkr.ecr.ap-south-1.amazonaws.com'
         DOCKER_IMAGE = 'dev-orbit-pem'
         DOCKER_NAME = 'jatin'
-        DOCKER_TAG = "${DOCKER_NAME}${BUILD_NUMBER}"
+        DOCKER_TAG = "${DOCKER_IMAGE}:${DOCKER_NAME}${BUILD_NUMBER}"
     }
 
     stages {
