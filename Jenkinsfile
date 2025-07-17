@@ -21,6 +21,17 @@ pipeline {
             }
         }
 
+        stage('Check Secret Content') {
+        steps {
+            withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
+                sh '''
+                    echo "Secret file content:"
+                    cat $ENV_FILE2
+                '''
+                }
+            }
+        }
+
         stage('Inject .env from Jenkins Secret') {
             steps {
                 withCredentials([file(credentialsId: 'jatin_env', variable: 'ENV_FILE2')]) {
