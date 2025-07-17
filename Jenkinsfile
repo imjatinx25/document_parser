@@ -80,7 +80,7 @@ pipeline {
         stage('Stop and Remove Old Docker Container Running on Port 8001') {
             steps {
                 script {
-                    // Stop and remove the container running on port 8000
+                    // Stop and remove the container running on port 8001
                     sh """
                         container_id=\$(docker ps -q --filter "publish=8001")
                         if [ -n "\$container_id" ]; then
