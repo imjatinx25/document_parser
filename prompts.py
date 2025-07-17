@@ -216,15 +216,41 @@
 
 import json
 
+# def get_analysis_prompt(combined_text: str) -> str:
+#     return f"""
+#     Analyze the following extracted bank statement tables.
+#     Identify:
+#     1. The headers.
+#     2. The first 5 transactions aligned with these headers.
+#     3. Map each header to its type: date, description, debit, credit, balance.
+
+#     Return a JSON with:
+#     {{
+#         "available_header": ["column1", "column2", ...],
+#         "example_transactions": [["value1", "value2", ...], ...],
+#         "column_types": {{
+#             "date_column": index,
+#             "description_column": index,
+#             "debit_column": index,
+#             "credit_column": index,
+#             "balance_column": index
+#         }}
+#     }}
+
+#     Tables:
+#     {combined_text}
+#     """
+
 def get_analysis_prompt(combined_text: str) -> str:
     return f"""
     Analyze the following extracted bank statement tables.
-    Identify:
-    1. The headers.
-    2. The first 5 transactions aligned with these headers.
+
+    Tasks:
+    1. Identify the headers.
+    2. Provide the first 5 transactions aligned with these headers.
     3. Map each header to its type: date, description, debit, credit, balance.
 
-    Return a JSON with:
+    STRICTLY return a valid JSON object with:
     {{
         "available_header": ["column1", "column2", ...],
         "example_transactions": [["value1", "value2", ...], ...],
@@ -237,9 +263,12 @@ def get_analysis_prompt(combined_text: str) -> str:
         }}
     }}
 
+    Use double quotes only. Return ONLY the JSON — no explanation, no comments.
+
     Tables:
     {combined_text}
     """
+
 
 def get_extraction_prompt(text_context: str, combined_text: str) -> str:
     return f"""
