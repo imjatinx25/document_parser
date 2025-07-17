@@ -458,60 +458,23 @@ async def check_bs_status(task_id: str) -> Dict:
 #         os.remove(temp_path)
 
 
-# @app.post("/process-statement")
-# async def process_statement(file: UploadFile = File(...)):
-#     task_id = str(uuid.uuid4())
-#     progress_manager.init_task(task_id)
-
-#     suffix = os.path.splitext(file.filename)[1]
-#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-#         temp_file.write(await file.read())
-#         temp_path = temp_file.name
-
-#     try:
-#         with open(temp_path, 'rb') as f:
-#             file_bytes = f.read()
-
-#         # Process and progressively update
-#         result = await process_bank_statement(file_bytes, task_id=task_id)
-
-#         # Cache the final result
-#         status_cache[task_id] = result
-
-#         # Final SSE update for progress
-#         await progress_manager.update_progress(
-#             task_id,
-#             progress=100,
-#             message="Processing complete!",
-#             data=result
-#         )
-
-#         return {
-#             "task_id": task_id,
-#             "summary": result
-#         }
-
-#     finally:
-#         os.remove(temp_path)
-
-
 @app.post("/api/process-statement")
-# async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-#     task_id = str(uuid.uuid4())
-#     progress_manager.init_task(task_id)
+# # async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+# #     task_id = str(uuid.uuid4())
+# #     progress_manager.init_task(task_id)
 
-#     suffix = os.path.splitext(file.filename)[1]
-#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-#         temp_file.write(await file.read())
-#         temp_path = temp_file.name
+# #     suffix = os.path.splitext(file.filename)[1]
+# #     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+# #         temp_file.write(await file.read())
+# #         temp_path = temp_file.name
 
-#     with open(temp_path, 'rb') as f:
-#         file_bytes = f.read()
+# #     with open(temp_path, 'rb') as f:
+# #         file_bytes = f.read()
 
-#     # Process in the background
-#     background_tasks.add_task(background_process, file_bytes, task_id, temp_path)
+# #     # Process in the background
+# #     background_tasks.add_task(background_process, file_bytes, task_id, temp_path)
 
-#     return {"task_id": task_id, "message": "Processing started. Listen to /progress-stream/{task_id}"}
+# #     return {"task_id": task_id, "message": "Processing started. Listen to /progress-stream/{task_id}"}
 async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """
     Background processing with progress streaming.
