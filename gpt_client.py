@@ -33,29 +33,47 @@ openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 #     return json.loads(response.choices[0].message.content)
 
-async def run_gpt(prompt: str, model: str = 'gpt-4o', system_prompt: str = 'You are a financial data assistant.', format_type: str = 'json') -> dict:
+# async def run_gpt(prompt: str, model: str = 'gpt-4o', system_prompt: str = 'You are a financial data assistant.', format_type: str = 'json') -> dict:
+#     """
+#     Unified GPT caller for processing prompts and returning parsed JSON.
+
+#     Args:
+#         prompt (str): The user prompt content
+#         model (str): The OpenAI model to use
+#         system_prompt (str): The system-level instruction prompt
+#         format_type (str): The expected response format type ('json' or 'text')
+
+#     Returns:
+#         dict: The parsed JSON response from the GPT model
+#     """
+#     response = await openai_client.chat.completions.create(
+#         model=model,
+#         messages=[
+#             {"role": "system", "content": system_prompt},
+#             {"role": "user", "content": prompt}
+#         ],
+#         response_format=format_type,  # must be a string like 'json'
+#         temperature=0.0
+#     )
+
+#     return json.loads(response.choices[0].message.content)
+
+async def run_gpt(prompt: str, model: str = 'gpt-4o', system_prompt: str = 'You are a financial data assistant.', format_type: str = 'json_object') -> dict:
     """
     Unified GPT caller for processing prompts and returning parsed JSON.
-
-    Args:
-        prompt (str): The user prompt content
-        model (str): The OpenAI model to use
-        system_prompt (str): The system-level instruction prompt
-        format_type (str): The expected response format type ('json' or 'text')
-
-    Returns:
-        dict: The parsed JSON response from the GPT model
     """
+    # Construct the response_format param as dict
+    response_format_param = {"type": format_type} if format_type else None
+
     response = await openai_client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        response_format=format_type,  # must be a string like 'json'
+        response_format=response_format_param,
         temperature=0.0
     )
 
     return json.loads(response.choices[0].message.content)
-
 
