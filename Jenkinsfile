@@ -10,7 +10,7 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         DOCKER_REGISTRY = '676206929524.dkr.ecr.ap-south-1.amazonaws.com'
         DOCKER_IMAGE = 'dev-orbit-pem'
-        DOCKER_NAME = 'JATIN'
+        DOCKER_NAME = 'jatin'
         DOCKER_TAG = "${DOCKER_NAME}${BUILD_NUMBER}"
     }
 
