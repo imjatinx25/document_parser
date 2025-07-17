@@ -1,14 +1,24 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from bank_statement_service import process_bank_statement
 from typing import Dict, Optional
 import os
+import tempfile
 from dotenv import load_dotenv
 import json
 import uuid
 import time
 import logging
 from collections import defaultdict
+from fastapi.responses import StreamingResponse
+import asyncio
+from progress_manager import progress_manager
+
+
+log_dir = 'D:\\tmp'
+os.makedirs(log_dir, exist_ok=True)
+
 
 # Configure logging
 logging.basicConfig(
@@ -19,12 +29,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import custom modules
-from celery_tasks import process_bank_statement
+# from celery_tasks import process_bank_statement
 from pdf_service import check_pdf_password_protection, process_pdf_file, PDFPasswordError, PDFProcessingError
 
 # Load environment variables
 load_dotenv()
-
+status_cache = {}
 # Initialize FastAPI app
 app = FastAPI(
     title="Bank Statement Analyzer",
@@ -68,65 +78,65 @@ def check_rate_limit(client_ip: str) -> bool:
     return True
 
 # Valkey Glide client
-valkey_client = None
+# valkey_client = None
 
-async def get_valkey_client():
-    """Get or create Valkey Glide client"""
-    global valkey_client
-    if valkey_client is None:
-        try:
-            from glide import (
-                GlideClusterClient,
-                GlideClusterClientConfiguration,
-                Logger,
-                LogLevel,
-                NodeAddress,
-            )
+# async def get_valkey_client():
+#     """Get or create Valkey Glide client"""
+#     global valkey_client
+#     if valkey_client is None:
+#         try:
+#             from glide import (
+#                 GlideClusterClient,
+#                 GlideClusterClientConfiguration,
+#                 Logger,
+#                 LogLevel,
+#                 NodeAddress,
+#             )
             
-            # Set logger configuration
-            Logger.set_logger_config(LogLevel.INFO)
+#             # Set logger configuration
+#             Logger.set_logger_config(LogLevel.INFO)
             
-            # Get Valkey configuration from environment variables
-            valkey_host = os.getenv('VALKEY_HOST', 'localhost')
-            valkey_port = int(os.getenv('VALKEY_PORT', 6379))
-            use_tls = os.getenv('VALKEY_USE_TLS', 'false').lower() == 'true'
+#             # Get Valkey configuration from environment variables
+#             valkey_host = os.getenv('VALKEY_HOST', 'localhost')
+#             valkey_port = int(os.getenv('VALKEY_PORT', 6379))
+#             use_tls = os.getenv('VALKEY_USE_TLS', 'false').lower() == 'true'
             
-            # Configure the Glide Cluster Client
-            addresses = [NodeAddress(valkey_host, valkey_port)]
-            config = GlideClusterClientConfiguration(addresses=addresses, use_tls=use_tls)
+#             # Configure the Glide Cluster Client
+#             addresses = [NodeAddress(valkey_host, valkey_port)]
+#             config = GlideClusterClientConfiguration(addresses=addresses, use_tls=use_tls)
             
-            print(f"Connecting to Valkey Glide at {valkey_host}:{valkey_port}...")
-            valkey_client = await GlideClusterClient.create(config)
-            print("Valkey Glide connection successful")
+#             print(f"Connecting to Valkey Glide at {valkey_host}:{valkey_port}...")
+#             valkey_client = await GlideClusterClient.create(config)
+#             print("Valkey Glide connection successful")
             
-        except Exception as e:
-            print(f"Valkey Glide connection failed: {e}")
-            raise
+#         except Exception as e:
+#             print(f"Valkey Glide connection failed: {e}")
+#             raise
     
-    return valkey_client
+#     return valkey_client
 
-# Test Valkey connection on startup
-@app.on_event("startup")
-async def startup_event():
-    """Test Valkey connection on application startup"""
-    try:
-        logger.info("Starting application...")
-        await get_valkey_client()
-        logger.info("Application started successfully")
-    except Exception as e:
-        logger.error(f"Failed to connect to Valkey on startup: {e}")
+# # Test Valkey connection on startup
+# @app.on_event("startup")
+# async def startup_event():
+#     """Test Valkey connection on application startup"""
+#     try:
+#         logger.info("Starting application...")
+#         await get_valkey_client()
+#         logger.info("Application started successfully")
+#     except Exception as e:
+#         logger.error(f"Failed to connect to Valkey on startup: {e}")
 
-# Cleanup Valkey client on shutdown
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup Valkey client on application shutdown"""
-    global valkey_client
-    if valkey_client:
-        try:
-            await valkey_client.close()
-            logger.info("Valkey client connection closed")
-        except Exception as e:
-            logger.error(f"Error closing Valkey client: {e}")
+# # Cleanup Valkey client on shutdown
+# @app.on_event("shutdown")
+# async def shutdown_event():
+#     """Cleanup Valkey client on application shutdown"""
+#     global valkey_client
+#     if valkey_client:
+#         try:
+#             await valkey_client.close()
+#             logger.info("Valkey client connection closed")
+#         except Exception as e:
+#             logger.error(f"Error closing Valkey client: {e}")
 
 # Home endpoint
 @app.get("/")
@@ -184,6 +194,90 @@ async def health_check() -> Dict:
 
 # Analyze statement endpoint
 @app.post("/analyze-bank-statement")
+# async def analyze_statement(
+#     file: UploadFile = File(...),
+#     password: Optional[str] = Form(None),
+#     request: Request = None
+# ) -> Dict:
+#     """
+#     Analyze a bank statement PDF and extract tables.
+#     Returns a task ID that can be used to check the analysis status.
+#     If the PDF is password protected, the password parameter should be provided.
+#     """
+#     # Rate limiting
+#     if request:
+#         client_ip = request.client.host
+#         if not check_rate_limit(client_ip):
+#             return {
+#                 "status": "error",
+#                 "message": "Rate limit exceeded. Please try again later.",
+#                 "data": None
+#             }
+    
+#     if not file.filename.lower().endswith('.pdf'):
+#         return {
+#             "status": "error",
+#             "message": "Only PDF files are allowed",
+#             "data": None
+#         }
+    
+#     # Check file size (limit to 10MB)
+#     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+#     if file.size and file.size > MAX_FILE_SIZE:
+#         return {
+#             "status": "error",
+#             "message": f"File size too large. Maximum allowed size is {MAX_FILE_SIZE // (1024*1024)}MB",
+#             "data": None
+#         }
+    
+#     try:
+#         # Read file content
+#         file_content = await file.read()
+        
+#         # Check if PDF is password protected
+#         if check_pdf_password_protection(file_content):
+#             if password is None:
+#                 return {
+#                     "status": "password_required",
+#                     "message": "PDF is password protected. Please provide the password parameter.",
+#                     "data": {
+#                         "example_request": {
+#                             "file": "your_pdf_file.pdf",
+#                             "password": "your_password"
+#                         }
+#                     }
+#                 }
+            
+#             # Process the PDF with the provided password
+#             try:
+#                 unlocked_content = process_pdf_file(file_content, password)
+#                 return await process_pdf_analysis(unlocked_content, file.filename)
+                
+#             except PDFPasswordError as e:
+#                 return {
+#                     "status": "error",
+#                     "message": str(e),
+#                     "data": None
+#                 }
+#             except PDFProcessingError as e:
+#                 return {
+#                     "status": "error",
+#                     "message": str(e),
+#                     "data": None
+#                 }
+#         else:
+#             # PDF is not password protected, process directly
+#             return await process_pdf_analysis(file_content, file.filename)
+        
+#     except Exception as e:
+#         print(f"Error processing PDF: {str(e)}")
+#         return {
+#             "status": "error",
+#             "message": str(e),
+#             "data": None
+#         }
+
+@app.post("/analyze-bank-statement")
 async def analyze_statement(
     file: UploadFile = File(...),
     password: Optional[str] = Form(None),
@@ -191,10 +285,8 @@ async def analyze_statement(
 ) -> Dict:
     """
     Analyze a bank statement PDF and extract tables.
-    Returns a task ID that can be used to check the analysis status.
-    If the PDF is password protected, the password parameter should be provided.
+    Returns immediate processed output (non-SSE, no streaming).
     """
-    # Rate limiting
     if request:
         client_ip = request.client.host
         if not check_rate_limit(client_ip):
@@ -203,69 +295,30 @@ async def analyze_statement(
                 "message": "Rate limit exceeded. Please try again later.",
                 "data": None
             }
-    
+
     if not file.filename.lower().endswith('.pdf'):
-        return {
-            "status": "error",
-            "message": "Only PDF files are allowed",
-            "data": None
-        }
-    
-    # Check file size (limit to 10MB)
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        return {"status": "error", "message": "Only PDF files are allowed", "data": None}
+
+    MAX_FILE_SIZE = 10 * 1024 * 1024
     if file.size and file.size > MAX_FILE_SIZE:
-        return {
-            "status": "error",
-            "message": f"File size too large. Maximum allowed size is {MAX_FILE_SIZE // (1024*1024)}MB",
-            "data": None
-        }
-    
+        return {"status": "error", "message": "File size too large. Max 10MB.", "data": None}
+
     try:
-        # Read file content
         file_content = await file.read()
-        
-        # Check if PDF is password protected
+
         if check_pdf_password_protection(file_content):
             if password is None:
-                return {
-                    "status": "password_required",
-                    "message": "PDF is password protected. Please provide the password parameter.",
-                    "data": {
-                        "example_request": {
-                            "file": "your_pdf_file.pdf",
-                            "password": "your_password"
-                        }
-                    }
-                }
-            
-            # Process the PDF with the provided password
+                return {"status": "password_required", "message": "PDF is password protected. Provide the password.", "data": None}
             try:
                 unlocked_content = process_pdf_file(file_content, password)
                 return await process_pdf_analysis(unlocked_content, file.filename)
-                
-            except PDFPasswordError as e:
-                return {
-                    "status": "error",
-                    "message": str(e),
-                    "data": None
-                }
-            except PDFProcessingError as e:
-                return {
-                    "status": "error",
-                    "message": str(e),
-                    "data": None
-                }
+            except (PDFPasswordError, PDFProcessingError) as e:
+                return {"status": "error", "message": str(e), "data": None}
         else:
-            # PDF is not password protected, process directly
             return await process_pdf_analysis(file_content, file.filename)
-        
+
     except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
-        return {
-            "status": "error",
-            "message": str(e),
-            "data": None
-        }
+        return {"status": "error", "message": str(e), "data": None}
 
 async def process_pdf_analysis(file_content: bytes, filename: str) -> Dict:
     """
@@ -357,6 +410,165 @@ async def check_bs_status(task_id: str) -> Dict:
             "message": f"Failed to retrieve task status: {str(e)}",
             "data": None
         }
+
+# @app.post("/process-statement")
+# async def process_statement(file: UploadFile = File(...)):
+#     # Save uploaded file to a temporary location
+#     suffix = os.path.splitext(file.filename)[1]
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+#         temp_file.write(await file.read())
+#         temp_path = temp_file.name
+
+#     try:
+#         # Read file bytes
+#         with open(temp_path, 'rb') as f:
+#             file_bytes = f.read()
+
+#         # Process the bank statement
+#         result = await process_bank_statement(file_bytes)
+#         return result
+
+#     finally:
+#         # Cleanup the temporary file
+#         os.remove(temp_path)
+
+# @app.post("/process-statement")
+# async def process_statement(file: UploadFile = File(...)):
+#     import uuid
+#     task_id = str(uuid.uuid4())
+#     progress_manager.init_task(task_id)
+
+#     suffix = os.path.splitext(file.filename)[1]
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+#         temp_file.write(await file.read())
+#         temp_path = temp_file.name
+
+#     try:
+#         with open(temp_path, 'rb') as f:
+#             file_bytes = f.read()
+
+#         result = await process_bank_statement(file_bytes, task_id=task_id)
+
+#         return {
+#             "task_id": task_id,
+#             "summary": result
+#         }
+
+#     finally:
+#         os.remove(temp_path)
+
+
+# @app.post("/process-statement")
+# async def process_statement(file: UploadFile = File(...)):
+#     task_id = str(uuid.uuid4())
+#     progress_manager.init_task(task_id)
+
+#     suffix = os.path.splitext(file.filename)[1]
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+#         temp_file.write(await file.read())
+#         temp_path = temp_file.name
+
+#     try:
+#         with open(temp_path, 'rb') as f:
+#             file_bytes = f.read()
+
+#         # Process and progressively update
+#         result = await process_bank_statement(file_bytes, task_id=task_id)
+
+#         # Cache the final result
+#         status_cache[task_id] = result
+
+#         # Final SSE update for progress
+#         await progress_manager.update_progress(
+#             task_id,
+#             progress=100,
+#             message="Processing complete!",
+#             data=result
+#         )
+
+#         return {
+#             "task_id": task_id,
+#             "summary": result
+#         }
+
+#     finally:
+#         os.remove(temp_path)
+
+
+@app.post("/process-statement")
+# async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+#     task_id = str(uuid.uuid4())
+#     progress_manager.init_task(task_id)
+
+#     suffix = os.path.splitext(file.filename)[1]
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+#         temp_file.write(await file.read())
+#         temp_path = temp_file.name
+
+#     with open(temp_path, 'rb') as f:
+#         file_bytes = f.read()
+
+#     # Process in the background
+#     background_tasks.add_task(background_process, file_bytes, task_id, temp_path)
+
+#     return {"task_id": task_id, "message": "Processing started. Listen to /progress-stream/{task_id}"}
+async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Background processing with progress streaming.
+    """
+    task_id = str(uuid.uuid4())
+    progress_manager.init_task(task_id)
+
+    suffix = os.path.splitext(file.filename)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_file.write(await file.read())
+        temp_path = temp_file.name
+
+    with open(temp_path, 'rb') as f:
+        file_bytes = f.read()
+
+    background_tasks.add_task(background_process, file_bytes, task_id, temp_path)
+
+    return {"task_id": task_id, "message": f"Processing started. Listen on /progress-stream/{task_id}"}
+
+
+# async def background_process(file_bytes: bytes, task_id: str, temp_path: str):
+#     try:
+#         result = await process_bank_statement(file_bytes, task_id=task_id)
+#         status_cache[task_id] = result
+
+#         await progress_manager.update_progress(
+#             task_id,
+#             progress=100,
+#             message="Processing complete!",
+#             data=result
+#         )
+#     finally:
+#         os.remove(temp_path)
+
+
+async def background_process(file_bytes: bytes, task_id: str, temp_path: str):
+    try:
+        result = await process_bank_statement(file_bytes, task_id=task_id)
+        status_cache[task_id] = result
+
+        # Final progress update WITH COMPLETE RESULT
+        await progress_manager.update_progress(
+            task_id,
+            progress=100,
+            message="Processing complete!",
+            data=result  # <-- This is your full result
+        )
+    finally:
+        os.remove(temp_path)
+
+# @app.get("/progress-stream/{task_id}")
+# async def progress_stream(task_id: str):
+#     return StreamingResponse(progress_manager.listen(task_id), media_type="text/event-stream")
+
+@app.get("/progress-stream/{task_id}")
+async def progress_stream(task_id: str):
+    return StreamingResponse(progress_manager.listen(task_id), media_type="text/event-stream")
 
 # Run the app
 if __name__ == '__main__':

@@ -5,6 +5,10 @@ from fastapi import UploadFile
 from io import BytesIO
 import time
 from exceptions import S3UploadError, TextractError
+from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # AWS Configuration
 AWS_REGION = os.getenv('AWS_REGION', 'ap-south-1')
@@ -150,7 +154,8 @@ async def extract_tables_from_pdf(file: UploadFile | BytesIO) -> dict:
         # Upload file to S3
         s3_key = f"uploads/{filename}"
         print("   - Starting Textract job...")
-        await upload_fileobj_to_s3(file, AWS_BUCKET_NAME, s3_key)
+        buffer = BytesIO(file)
+        await upload_fileobj_to_s3(buffer, AWS_BUCKET_NAME, s3_key)
         
         # Start Textract job
         response = textract_client.start_document_analysis(
