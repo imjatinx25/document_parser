@@ -495,7 +495,7 @@ async def check_bs_status(task_id: str) -> Dict:
 #         os.remove(temp_path)
 
 
-@app.post("/process-statement")
+@app.post("/api/process-statement")
 # async def process_statement(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
 #     task_id = str(uuid.uuid4())
 #     progress_manager.init_task(task_id)
@@ -566,7 +566,7 @@ async def background_process(file_bytes: bytes, task_id: str, temp_path: str):
 # async def progress_stream(task_id: str):
 #     return StreamingResponse(progress_manager.listen(task_id), media_type="text/event-stream")
 
-@app.get("/progress-stream/{task_id}")
+@app.get("/api/progress-stream/{task_id}")
 async def progress_stream(task_id: str):
     return StreamingResponse(progress_manager.listen(task_id), media_type="text/event-stream")
 
