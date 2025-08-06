@@ -270,13 +270,30 @@ def get_analysis_prompt(combined_text: str) -> str:
     """
 
 
+# def get_extraction_prompt(text_context: str, combined_text: str) -> str:
+#     return f"""
+#     Extract only valid financial transactions from the provided bank statement tables.
+#     Use the following context for understanding format:
+#     {text_context}
+
+#     Return a JSON with:
+#     {{
+#         "transactions": [
+#             {{"date": "DD-MM-YYYY", "description": "...", "debit": number, "credit": number, "balance": number}},
+#             ...
+#         ]
+#     }}
+
+#     Tables:
+#     {combined_text}
+#     """
+
 def get_extraction_prompt(text_context: str, combined_text: str) -> str:
     return f"""
-    Extract only valid financial transactions from the provided bank statement tables.
-    Use the following context for understanding format:
+    Extract valid financial transactions from the provided bank statement tables using the context below:
     {text_context}
 
-    Return a JSON with:
+    Return a valid JSON object with this exact structure:
     {{
         "transactions": [
             {{"date": "DD-MM-YYYY", "description": "...", "debit": number, "credit": number, "balance": number}},
@@ -284,21 +301,48 @@ def get_extraction_prompt(text_context: str, combined_text: str) -> str:
         ]
     }}
 
+    Use double quotes. Return ONLY the JSON. Do not add any explanation or text.
+
     Tables:
     {combined_text}
     """
 
+
+
+
+# def get_categorization_prompt(transactions: list) -> str:
+#     return f"""
+#     Categorize each transaction based on the provided details into one of these categories:
+
+#     Income: income.salary, income.interest, income.business, income.refund, income.others
+#     Expense: expense.food, expense.rent, expense.utilities, expense.shopping, expense.travel, expense.entertainment, expense.healthcare, expense.insurance, expense.loan_emi, expense.others
+#     Transfer: transfer.self_transfer, transfer.external_transfer
+
+#     Use description, amount, and pattern to decide. Do not create new categories.
+
+#     Return JSON:
+#     {{
+#         "transactions": [
+#             {{"date": "YYYY-MM-DD", "description": "...", "debit": number, "credit": number, "balance": number, "category": "exact.subcategory"}},
+#             ...
+#         ]
+#     }}
+
+#     Transactions:
+#     {json.dumps(transactions, indent=2)}
+#     """
+
 def get_categorization_prompt(transactions: list) -> str:
     return f"""
-    Categorize each transaction based on the provided details into one of these categories:
+    Categorize each transaction into one of the following:
 
-    Income: income.salary, income.interest, income.business, income.refund, income.others
-    Expense: expense.food, expense.rent, expense.utilities, expense.shopping, expense.travel, expense.entertainment, expense.healthcare, expense.insurance, expense.loan_emi, expense.others
-    Transfer: transfer.self_transfer, transfer.external_transfer
+    - Income: income.salary, income.interest, income.business, income.refund, income.others
+    - Expense: expense.food, expense.rent, expense.utilities, expense.shopping, expense.travel, expense.entertainment, expense.healthcare, expense.insurance, expense.loan_emi, expense.others
+    - Transfer: transfer.self_transfer, transfer.external_transfer
 
-    Use description, amount, and pattern to decide. Do not create new categories.
+    Use the transaction description, amount, and pattern to decide. Do not create new categories.
 
-    Return JSON:
+    Return JSON in the following format:
     {{
         "transactions": [
             {{"date": "YYYY-MM-DD", "description": "...", "debit": number, "credit": number, "balance": number, "category": "exact.subcategory"}},
@@ -306,7 +350,10 @@ def get_categorization_prompt(transactions: list) -> str:
         ]
     }}
 
+    Use double quotes and strict JSON formatting. Return ONLY the JSON without any comments or extra text.
+
     Transactions:
     {json.dumps(transactions, indent=2)}
     """
+
 
